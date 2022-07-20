@@ -51,6 +51,7 @@ test_shallow_bitmaps () {
 }
 
 test_shallow_bitmaps
+test_shallow_bitmaps "pack.writeBitmapLookupTable"
 
 
 test_done
