@@ -4,10 +4,14 @@ test_description='Tests performance using midx bitmaps'
 . ./perf-lib.sh
 . "${TEST_DIRECTORY}/perf/lib-bitmap.sh"
 
-test_perf_large_repo
-
 test_bitmap () {
 	local enabled="$1"
+
+	test_expect_success "remove existing repo (lookup=$enabled)" '
+		rm -fr * .git
+	'
+
+	test_perf_large_repo
 
 	# we need to create the tag up front such that it is covered by the repack and
 	# thus by generated bitmaps.
