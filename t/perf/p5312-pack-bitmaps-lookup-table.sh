@@ -8,6 +8,10 @@ test_perf_large_repo
 
 pack_bitmap_init_config
 
+test_expect_success 'enable lookup table' '
+    git config pack.writeBitmapLookupTable true
+'
+
 test_pack_bitmap
 
 test_done

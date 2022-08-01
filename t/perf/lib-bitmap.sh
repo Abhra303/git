@@ -69,12 +69,6 @@ test_partial_bitmap () {
 }
 
 pack_bitmap_init_config () {
-	test_expect_success "setup repo environment" '
-		rm -fr * .git 
-	'
-
-	test_perf_large_repo
-
 	# note that we do everything through config,
 	# since we want to be able to compare bitmap-aware
 	# git versus non-bitmap git

@@ -680,7 +680,7 @@ static struct stored_bitmap *lazy_bitmap_for_commit(struct bitmap_index *bitmap_
 {
 	uint32_t commit_pos, xor_row;
 	uint64_t offset;
-	int flags, found;
+	int flags;
 	struct bitmap_lookup_table_triplet triplet;
 	struct object_id *oid = &commit->object.oid;
 	struct ewah_bitmap *bitmap;
@@ -699,12 +699,15 @@ static struct stored_bitmap *lazy_bitmap_for_commit(struct bitmap_index *bitmap_
 	if (!bitmap_bsearch_pos(bitmap_git, oid, &commit_pos))
 		return NULL;
 
+	fprintf(stderr, "commit pos of desired commit (%s) - %u\n", oid_to_hex(oid), commit_pos);
 	if (bitmap_bsearch_triplet_by_pos(commit_pos, bitmap_git, &triplet) < 0)
 		return NULL;
 
 	xor_items_nr = 0;
 	offset = triplet.offset;
 	xor_row = triplet.xor_row;
+
+	fprintf(stderr, "triplet_commit_pos: %u\ttriplet.offset: %llu\ttriplet.xor_row: %u\n", triplet.commit_pos, (unsigned long long)triplet.offset, triplet.xor_row);
 
 	while (xor_row != 0xffffffff) {
 		ALLOC_GROW(xor_items, xor_items_nr + 1, xor_items_alloc);
@@ -719,6 +722,7 @@ static struct stored_bitmap *lazy_bitmap_for_commit(struct bitmap_index *bitmap_
 
 		xor_item = &xor_items[xor_items_nr];
 		xor_item->offset = triplet.offset;
+		fprintf(stderr, "xor_triplet.commit_pos: %u\txor_triplet.offset: %llu\txor_triplet.xor_row: %u\n", triplet.commit_pos, (unsigned long long)triplet.offset, triplet.xor_row);
 
 		if (nth_bitmap_object_oid(bitmap_git, &xor_item->oid, triplet.commit_pos) < 0) {
 			error(_("corrupt bitmap lookup table: commit index %u out of range"),
@@ -726,15 +730,17 @@ static struct stored_bitmap *lazy_bitmap_for_commit(struct bitmap_index *bitmap_
 			goto corrupt;
 		}
 
+		fprintf(stderr, "xor_oid: %s\n", oid_to_hex(&xor_item->oid));
+
 		hash_pos = kh_get_oid_map(bitmap_git->bitmaps, xor_item->oid);
 
 		/*
-			* If desired bitmap is already stored, we don't need
-			* to iterate further. Because we know that bitmaps
-			* that are needed to be parsed to parse this bitmap
-			* has already been stored. So, assign this stored bitmap
-			* to the xor_bitmap.
-			*/
+		 * If desired bitmap is already stored, we don't need
+		 * to iterate further. Because we know that bitmaps
+		 * that are needed to be parsed to parse this bitmap
+		 * has already been stored. So, assign this stored bitmap
+		 * to the xor_bitmap.
+		 */
 		if (hash_pos < kh_end(bitmap_git->bitmaps) &&
 			(xor_bitmap = kh_value(bitmap_git->bitmaps, hash_pos)))
 			break;
@@ -745,6 +751,9 @@ static struct stored_bitmap *lazy_bitmap_for_commit(struct bitmap_index *bitmap_
 	while (xor_items_nr) {
 		xor_item = &xor_items[xor_items_nr - 1];
 		bitmap_git->map_pos = xor_item->offset;
+
+		fprintf(stderr, "xor_item oid: %s\n", oid_to_hex(&xor_item->oid));
+
 		if (bitmap_git->map_size - bitmap_git->map_pos < bitmap_header_size) {
 			error(_("corrupt ewah bitmap: truncated header for bitmap of commit \"%s\""),
 				oid_to_hex(&xor_item->oid));
